@@ -1,5 +1,5 @@
 import express from 'express';
-import { getAllProjects, createProject, uploadProjectFile } from '../controllers/projectController.js';
+import { getAllProjects, createProject, uploadProjectFile } from '../controllers/ProjectController.js';
 import Project from '../models/Project.js';
 import Application from '../models/Application.js'; // Add this import for the projectjoined endpoint
 

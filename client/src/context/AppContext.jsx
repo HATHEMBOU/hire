@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect } from "react";
 import axios from "axios";
 
 export const AppContext = createContext();
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export const AppContextProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -63,7 +64,9 @@ export const AppContextProvider = ({ children }) => {
     const fetchProjects = async () => {
       try {
         setIsLoading(true);
-        const response = await axios.get("http://localhost:5000/api/projects");
+
+        const response = await axios.get(`${API_BASE_URL}/api/projects`);
+        
 
         const projectData = response.data;
 
@@ -116,7 +119,7 @@ export const AppContextProvider = ({ children }) => {
     if (!userId) return;
     
     try {
-      const response = await axios.get(`http://localhost:5000/api/applications/user/${userId}`);
+      const response = await axios.get(`${API_BASE_URL}/api/applications/user/${userId}`);
       
       if (Array.isArray(response.data)) {
         // Process data to ensure application objects have proper project data in string form
@@ -152,7 +155,7 @@ export const AppContextProvider = ({ children }) => {
   // Login handler
   const login = async (email, password) => {
     try {
-      const response = await axios.post("http://localhost:5000/api/login", { email, password });
+      const response = await axios.post(`${API_BASE_URL}/api/login`, { email, password });
       let userData = response.data;
       
       // Add role if missing
@@ -180,7 +183,7 @@ export const AppContextProvider = ({ children }) => {
   const register = async (email, password, name, image, role = "user") => {
     console.log("Registering with role:", role);
     try {
-      const response = await axios.post("http://localhost:5000/api/register", {
+      const response = await axios.post(`${API_BASE_URL}/api/register`, {
         email,
         password,
         name,
@@ -230,7 +233,7 @@ export const AppContextProvider = ({ children }) => {
         status: "Pending"
       };
       
-      const response = await axios.post("http://localhost:5000/api/applications", applicationData);
+      const response = await axios.post(`${API_BASE_URL}/api/applications`, applicationData);
       
       // Update local applications state
       const newApplication = response.data;
