@@ -1,0 +1,30 @@
+node_modules
+# .gitignore in the root of hirenext repository
+
+# Existing rules for hirenext...
+# ...
+
+# Rules for the client directory (copied and prefixed)
+client/logs
+client/*.log
+client/npm-debug.log*
+client/yarn-debug.log*
+client/yarn-error.log*
+client/pnpm-debug.log*
+client/lerna-debug.log*
+
+client/node_modules
+client/dist
+client/dist-ssr
+client/*.local
+
+# Optional: Keep editor settings if needed, but generally ignore them
+# client/.vscode/*
+# !client/.vscode/extensions.json # Be careful with ! rules
+# client/.idea
+# client/.DS_Store
+# client/*.suo
+# client/*.ntvs*
+# client/*.njsproj
+# client/*.sln
+# client/*.sw?
