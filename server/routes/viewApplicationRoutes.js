@@ -5,7 +5,7 @@ import {
   createViewApplication,
   updateViewApplication,
   deleteViewApplication,
-} from "../controllers/viewApplicationController.js";
+} from "../controllers/ViewApplicationController.js";
 
 const router = express.Router();
 
