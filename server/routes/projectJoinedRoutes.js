@@ -6,7 +6,7 @@ import {
   updateJoinedProjectStatus,
   deleteJoinedProject,
   getAllJoinedProjects // Add this import
-} from '../controllers/projectJoinedController.js';
+} from '../controllers/ProjectJoinedController.js';
 
 const router = express.Router();
 
