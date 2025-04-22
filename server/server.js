@@ -19,7 +19,7 @@ import Application from "./models/Application.js";
 
 // Import route files
 import projectJoinedRoutes from './routes/projectJoinedRoutes.js';
-import applicationRoutes from "./routes/applicationRoutes.js"; 
+import applicationRoutes from "./routes/ApplicationRoutes.js"; 
 import viewApplicationRoutes from "./routes/viewApplicationRoutes.js"; 
 import userRoutes from "./routes/userRoutes.js"; 
 import manageProjectRoutes from "./routes/manageProjectRoutes.js";
