@@ -1,21 +1,16 @@
-// server/server.js
+// server/server.js (Original structure with only CORS updated)
 
-// --- Core Imports ---
 import express from "express";
-import cors from "cors";
-import "dotenv/config"; // Loads .env variables into process.env
+import cors from "cors"; // Ensure 'cors' is imported
+import "dotenv/config";
+import connectDB from "./config/db.js";
+import "./config/instrument.js";
+import * as Sentry from "@sentry/node"; // Keep if you use Sentry
+import { clerkWebhooks } from "./controllers/webhooks.js";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
-// --- Configuration & Utilities ---
-import connectDB from "./config/db.js";
-import "./config/instrument.js"; // Assuming this initializes Sentry or similar
-import *:// Sentry setup and webhook handling need specific care
-import { clerkWebhooks } from "./controllers/webhooks.js"; // Make sure this path is correct
-
-// --- Models ---
-// It's often better practice to import models within controllers/routes where needed,
-// but keeping them here based on your original structure for now.
+// Import models (as they were)
 import User from "./models/User.js";
 import Company from "./models/Company.js";
 import Project from "./models/Project.js";
@@ -24,8 +19,7 @@ import ProjectJoined from "./models/ProjectJoined.js";
 import ViewApplication from "./models/ViewApplication.js";
 import Application from "./models/Application.js";
 
-// --- Route Imports ---
-// Ensure correct file paths and case sensitivity
+// Import route files (as they were)
 import projectJoinedRoutes from './routes/projectJoinedRoutes.js';
 import applicationRoutes from "./routes/ApplicationRoutes.js";
 import viewApplicationRoutes from "./routes/viewApplicationRoutes.js";
@@ -34,10 +28,13 @@ import manageProjectRoutes from "./routes/manageProjectRoutes.js";
 import projectRoutes from "./routes/projectRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 
-// --- Initialize Express App ---
+// Initialize the app
 const app = express();
 
-// --- CORS Configuration ---
+// Serve static files early if needed for uploads BEFORE CORS might interfere
+app.use('/uploads', express.static('uploads'));
+
+// === START: Updated CORS Configuration ===
 const allowedOrigins = [
   'https://enchanting-lollipop-cc8ee1.netlify.app', // Your Deployed Netlify Frontend URL
   'http://localhost:5173'                          // Your Local Frontend Dev URL (Optional)
@@ -52,33 +49,30 @@ const corsOptions = {
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true, // If frontend sends cookies/auth headers
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Include OPTIONS for preflight requests
-  allowedHeaders: ['Content-Type', 'Authorization'] // Headers frontend might send
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Include OPTIONS
+  allowedHeaders: ['Content-Type', 'Authorization']
 };
 
-// Apply CORS Middleware FIRST
+// Apply CORS Middleware
 app.use(cors(corsOptions));
 
-// Handle Preflight Requests (important for complex CORS scenarios)
-app.options('*', cors(corsOptions)); // Allow preflight requests for all routes
+// Handle Preflight requests
+app.options('*', cors(corsOptions));
+// === END: Updated CORS Configuration ===
 
-// --- Standard Middleware ---
-// Serve static files from the 'uploads' directory
-app.use('/uploads', express.static('uploads'));
-// Parse JSON request bodies
+
+// Other Middlewares (as they were)
 app.use(express.json());
-// Parse URL-encoded request bodies
-app.use(express.urlencoded({ extended: true }));
+// Sentry.init({ dsn: process.env.SENTRY_DSN }); // Keep if using Sentry
 
-// --- Sentry Initialization (if used) ---
-// Sentry.init({ dsn: process.env.SENTRY_DSN });
-// Consider adding Sentry request handler here if needed: app.use(Sentry.Handlers.requestHandler());
+// Basic Routes (as they were)
+app.get("/", (req, res) => res.send("API working"));
+app.get("/debug-sentry", function mainHandler(req, res) {
+  throw new Error("My first Sentry error!");
+});
 
-// --- API Routes ---
-app.get("/", (req, res) => res.send("API working")); // Health check / base route
-
-// Use imported route files
+// Route imports (as they were)
 app.use("/api/upload", uploadRoutes);
 app.use("/api/applications", applicationRoutes);
 app.use("/api/viewapplications", viewApplicationRoutes);
@@ -87,8 +81,10 @@ app.use("/api/projectjoined", projectJoinedRoutes);
 app.use("/api/manageprojects", manageProjectRoutes);
 app.use("/api/projects", projectRoutes);
 
-// Inline routes (Consider moving these to respective route files later for better organization)
-// Login Route
+// Webhook Route (as it was)
+app.post("/webhooks", (req, res) => clerkWebhooks(req, res, mongoose));
+
+// Login Route (as it was)
 app.post("/api/login", async (req, res) => {
   const { email, password } = req.body;
   try {
@@ -100,16 +96,14 @@ app.post("/api/login", async (req, res) => {
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid email or password" });
     }
-    // Send only necessary, non-sensitive user data
-    res.json({ _id: user._id, name: user.name, email: user.email, image: user.image, role: user.role });
+    res.json({ _id: user._id, name: user.name, email: user.email, image: user.image, role: user.role }); // Added role
   } catch (error) {
-    console.error("Login error:", error);
-    // Sentry.captureException(error); // Uncomment if using Sentry
+    // Sentry.captureException(error); // Keep if using Sentry
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
-// Register Route
+// Register Route (as it was)
 app.post("/api/register", async (req, res) => {
   const { email, password, name, image, role } = req.body;
   try {
@@ -123,10 +117,9 @@ app.post("/api/register", async (req, res) => {
       password: hashedPassword,
       name,
       image,
-      role: role || "user" // Default to 'user' if role not provided
+      role: role || "user"
     });
     await user.save();
-    // Send only necessary, non-sensitive user data
     res.status(201).json({
       _id: user._id,
       name: user.name,
@@ -136,12 +129,12 @@ app.post("/api/register", async (req, res) => {
     });
   } catch (error) {
     console.error("Registration error:", error.message);
-    // Sentry.captureException(error); // Uncomment if using Sentry
+    // Sentry.captureException(error); // Keep if using Sentry
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
-// Company Routes (Consider moving to routes/companyRoutes.js)
+// Route for creating a company (as it was)
 app.post("/api/companies", async (req, res) => {
   const { name, email, image } = req.body;
   try {
@@ -151,77 +144,105 @@ app.post("/api/companies", async (req, res) => {
     await company.save();
     res.status(201).json(company);
   } catch (error) {
-    console.error("Company creation error:", error);
-    // Sentry.captureException(error); // Uncomment if using Sentry
+    // Sentry.captureException(error); // Keep if using Sentry
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
+// Get all companies (as it was)
 app.get("/api/companies", async (req, res) => {
   try {
     const companies = await Company.find();
-    // It's okay if no companies are found, just return an empty array
+    // Removed the 404 for empty array, just return empty array if none found
     res.json(companies);
   } catch (error) {
     console.error("Error fetching companies:", error);
-    // Sentry.captureException(error); // Uncomment if using Sentry
+    // Sentry.captureException(error); // Keep if using Sentry
     return res.status(500).json({ message: "Error fetching companies", error: error.message });
   }
 });
 
-// Get applications for a specific project (Consider moving to applicationRoutes.js)
+// Submit an application (as it was)
+// NOTE: This duplicates the route imported via applicationRoutes.
+// You should ideally remove this inline definition and use the imported router.
+// Keeping it for now as requested to not change structure.
+app.post("/api/applications", async (req, res) => {
+  const { userId, projectId, solutionLink } = req.body;
+  try {
+    if (!userId || !projectId || !solutionLink) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+    const application = new Application({ userId, projectId, solutionLink });
+    await application.save();
+    res.status(201).json(application);
+  } catch (error) {
+    console.error("Error creating application:", error);
+    // Sentry.captureException(error); // Keep if using Sentry
+    return res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// Check collections route (as it was)
+app.get("/api/check-collections", async (req, res) => {
+  try {
+    const collections = await mongoose.connection.db.listCollections().toArray();
+    const collectionNames = collections.map(c => c.name);
+    const counts = {};
+    for (const name of collectionNames) {
+      counts[name] = await mongoose.connection.db.collection(name).countDocuments();
+    }
+    res.json({
+      collections: collectionNames,
+      documentCounts: counts
+    });
+  } catch (error) {
+    console.error("Error checking collections:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get applications for a project (as it was)
+// NOTE: This duplicates functionality potentially in applicationRoutes or viewApplicationRoutes.
+// Keeping it for now.
 app.get("/api/projects/:id/applications", async (req, res) => {
   try {
     const applications = await Application.find({ projectId: req.params.id })
-      .populate("userId", "name email image"); // Populate user details
-    // It's okay if no applications are found, just return an empty array
+      .populate("userId", "name email image");
+    // Removed the 404 for empty array
     res.json(applications);
   } catch (error) {
-    console.error("Error fetching project applications:", error);
-    // Sentry.captureException(error); // Uncomment if using Sentry
+    console.error("Error fetching applications:", error);
+    // Sentry.captureException(error); // Keep if using Sentry
     return res.status(500).json({ message: "Error fetching applications", error: error.message });
   }
 });
 
-// Admin: Delete a project (Consider moving to projectRoutes.js with admin middleware)
+// Admin: Delete a project (as it was)
+// NOTE: Needs auth middleware in a real app.
 app.delete("/api/admin/projects/:id", async (req, res) => {
-  // Add authentication/authorization middleware here to check if user is admin
   try {
     const project = await Project.findByIdAndDelete(req.params.id);
     if (!project) return res.status(404).json({ message: "Project not found" });
     res.json({ message: "Project deleted successfully" });
   } catch (error) {
-    console.error("Error deleting project:", error);
-    // Sentry.captureException(error); // Uncomment if using Sentry
+    // Sentry.captureException(error); // Keep if using Sentry
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
-
-// --- Webhook Route ---
-// Note: Webhooks often require raw body parsing. If Clerk needs this,
-// this route might need to be placed *before* express.json(). Test carefully.
-app.post("/webhooks", (req, res) => clerkWebhooks(req, res, mongoose));
-
-
-// --- Sentry Error Handler (if used) ---
-// Must be placed *after* all controllers and routes
-// app.use(Sentry.Handlers.errorHandler());
-
-// --- Basic Error Handler ---
-// Catches errors not handled by Sentry or specific routes
+// Handle errors (as it was)
+// NOTE: This basic handler might be superseded if using Sentry's error handler.
+// app.use(Sentry.Handlers.errorHandler()); // Uncomment if using Sentry error handler
 app.use(function onError(err, req, res, next) {
-  console.error("Unhandled Error:", err); // Log the error for debugging
-  res.statusCode = err.status || 500; // Use error status or default to 500
-  res.json({
-       message: err.message || "An unexpected error occurred.",
-       // Optionally include stack trace in development only
-       // stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
-  });
+  // Log the error
+  console.error("Fallback Error Handler:", err);
+  // Send generic response
+  res.statusCode = 500;
+  res.json({ message: "An internal server error occurred." /* , error: err.message */ }); // Avoid sending detailed errors in prod
 });
 
-// --- Start Server ---
-const PORT = process.env.PORT || 5000; // Use Render's port or default
+// Start the server (as it was)
+const PORT = process.env.PORT || 5000;
 
 connectDB()
   .then(() => {
@@ -231,6 +252,6 @@ connectDB()
     });
   })
   .catch(err => {
-    console.error("CRITICAL: Failed to connect to MongoDB or start server:", err);
-    process.exit(1); // Exit if DB connection fails
+    console.log("Failed to connect to MongoDB and start server:", err);
+    process.exit(1); // Exit if DB/server start fails
   });
