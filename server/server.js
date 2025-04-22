@@ -21,7 +21,7 @@ import Application from "./models/Application.js";
 import projectJoinedRoutes from './routes/projectJoinedRoutes.js';
 import applicationRoutes from "./routes/ApplicationRoutes.js"; 
 import viewApplicationRoutes from "./routes/viewApplicationRoutes.js"; 
-import userRoutes from "./routes/userRoutes.js"; 
+import userRoutes from "./routes/UserRoutes.js"; 
 import manageProjectRoutes from "./routes/manageProjectRoutes.js";
 import projectRoutes from "./routes/projectRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
