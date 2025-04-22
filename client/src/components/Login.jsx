@@ -3,6 +3,7 @@ import { AppContext } from "../context/AppContext";
 import { useNavigate } from "react-router-dom";
 import axios from "axios"; // Add this import
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,7 +26,7 @@ const Login = () => {
     
     try {
       // Use axios instead of fetch to be consistent with the rest of your app
-      const response = await axios.post("http://localhost:5000/api/login", {
+      const response = await axios.post(`${API_BASE_URL}`, {
         email,
         password
       });
