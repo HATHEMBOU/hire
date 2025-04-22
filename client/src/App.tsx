@@ -8,7 +8,7 @@ import SignUp from "./components/SignUp";
 import { AppContext } from "./context/AppContext";
 import Dashboard from "./pages/Dashboard";
 import ManageJobs from "./pages/ManageJobs";
-import ViewApplications from "./pages/ViewApplications";
+import ViewApplications from "./pages/Viewapplications";
 import AddProdArena from "./pages/AddProdArena";
 import "quill/dist/quill.snow.css";
 import ErrorBoundary from "./components/ErrorBoundary"; // Import your ErrorBoundary
