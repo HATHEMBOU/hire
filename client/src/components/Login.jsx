@@ -26,11 +26,13 @@ const Login = () => {
     
     try {
       // Use axios instead of fetch to be consistent with the rest of your app
-      const response = await axios.post(`${API_BASE_URL}`, {
+      const response = await axios.post(`${API_BASE_URL}/api/login`, { // Add the correct endpoint path
         email,
         password
-      });
+     });
       
+       // OLD - Incorrect path:
+
       // Success animation
       document.querySelector('.login-form').classList.add('success');
       
