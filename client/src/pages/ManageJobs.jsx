@@ -3,6 +3,9 @@ import moment from "moment";
 import axios from "axios";
 import { AppContext } from "../context/AppContext";
 
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const ManageJobs = () => {
   const { user } = useContext(AppContext);
   const [projects, setProjects] = useState([]);
@@ -12,7 +15,7 @@ const ManageJobs = () => {
     const fetchProjects = async () => {
       try {
         const endpoint = user.role === "admin" ? "/api/admin/projects" : "/api/projects";
-        const response = await axios.get(`http://localhost:5000${endpoint}`);
+        const response = await axios.get(`${API_BASE_URL}${endpoint}`);
         
         // Filtrer les projets où companyId correspond à l'email de l'utilisateur
         const filteredProjects = user.role === "company" 
@@ -41,7 +44,7 @@ const ManageJobs = () => {
       }
       
       const response = await axios.put(
-        `http://localhost:5000/api/projects/${id}`, 
+        `${API_BASE_URL}/api/projects/${id}`, 
         { 
           visible: !currentVisibility 
         },
@@ -75,7 +78,7 @@ const ManageJobs = () => {
   const deleteProject = async (id) => {
     if (window.confirm("Are you sure you want to delete this project?")) {
       try {
-        await axios.delete(`http://localhost:5000/api/admin/projects/${id}`);
+        await axios.delete(`${API_BASE_URL}/api/admin/projects/${id}`);
         setProjects(projects.filter(p => p._id !== id));
         setError(null);
       } catch (error) {

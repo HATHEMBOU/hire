@@ -16,8 +16,7 @@ const Applications = () => {
   const { user, userApplications } = useContext(AppContext);
   
   // API base URL
-  const API_URL = 'http://localhost:5000';
-  
+  const API_URL =  import.meta.env.VITE_API_URL || 'http://localhost:5000';
   useEffect(() => {
     // Debug user info
     console.log("Current user:", user);

@@ -6,7 +6,7 @@ import { AppContext } from '../context/AppContext'; // Update this path to match
 
 // Configure the base URL for your API
 // Change this to match your actual backend URL
-const API_BASE_URL = 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // Modified test data with empty companyId since we'll set it dynamically
 const testData = {
