@@ -19,8 +19,7 @@ const Viewapplication = () => {
   const { user } = useContext(AppContext);
   
   // API base URL
-  const API_URL = 'http://localhost:5000';
-
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
   // Function to fetch all joined projects
   const fetchAllJoinedProjects = async () => {
     try {
