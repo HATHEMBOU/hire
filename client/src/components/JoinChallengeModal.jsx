@@ -387,6 +387,11 @@ if (response.data && response.data.joinedProject) {
                 <p className="text-gray-500 text-xs mt-1">
                   {formData.description.length} / 20 characters minimum
                 </p>
+              <p>
+  Use <a href="https://getcode-lwui.onrender.com/upload.html" target="_blank">our website</a> or 
+  <a href="https://buymeacoffee.com/signup" target="_blank">others</a> to make your code available for purchase and add the link to the description.
+</p>
+
               </div>
 
               {/* URL Field */}
