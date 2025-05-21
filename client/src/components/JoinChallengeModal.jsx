@@ -379,7 +379,7 @@ if (response.data && response.data.joinedProject) {
                   className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#0A2463]/50 outline-none transition-colors ${
                     errors.description ? "border-red-400" : "border-gray-300"
                   }`}
-                  placeholder="Describe your submission... (minimum 20 characters)"
+                  placeholder="Add Here you transaction link for payment and describe the solution please"
                 ></textarea>
                 {errors.description && (
                   <p className="text-red-500 text-sm mt-1">{errors.description}</p>
