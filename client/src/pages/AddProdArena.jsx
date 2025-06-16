@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { ChevronDown, DollarSign, Upload } from 'lucide-react';
+import { ChevronDown, DollarSign } from 'lucide-react';
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid'; // You may need to install this: npm install uuid
 import { AppContext } from '../context/AppContext'; // Update this path to match your project structure
@@ -8,16 +8,16 @@ import { AppContext } from '../context/AppContext'; // Update this path to match
 // Change this to match your actual backend URL
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-// Modified test data with empty companyId since we'll set it dynamically
+// Updated test data with actual values
 const testData = {
-  title: " ",
-  location: "",
-  difficulty: "",
+  title: "AI-Powered E-commerce Recommendation System",
+  location: "Algeria",
+  difficulty: "Intermediate",
   companyId: "", // This will be filled with user's email
-  description: "",
-  prize: "",
-  duration: "",
-  category: ""
+  description: "Build an intelligent recommendation system for e-commerce platforms using machine learning algorithms. The system should analyze user behavior, purchase history, and product characteristics to provide personalized product recommendations. Must include real-time processing capabilities and A/B testing framework.",
+  prize: "$5,000",
+  duration: "2 months",
+  category: "AI/ML"
 };
 
 const AddProdArena = () => {
@@ -36,47 +36,30 @@ const AddProdArena = () => {
     companyId: ''
   });
   
-  const [file, setFile] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [acceptMarketFee, setAcceptMarketFee] = useState(false);
+  const [acceptPaymentCommitment, setAcceptPaymentCommitment] = useState(false);
   
   const categories = ['Web Development', 'Mobile Development', 'UI/UX Design', 'Data Science', 'AI/ML', 'Marketing'];
   const locations = ['Algeria', 'Remote', 'USA', 'Canada', 'UK', 'France'];
   const difficulties = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
   const durations = ['1 week', '2 weeks', '1 month', '2 months', '3 months', '6 months'];
 
-  // Load test data and set user email on component mount
+  // Set user email when user context changes
   useEffect(() => {
-    if (user && user.email) {
-      // Update test data with the user's email
-      const updatedTestData = {
-        ...testData,
+    if (user?.email) {
+      setFormData(prev => ({
+        ...prev,
         companyId: user.email
-      };
-      
-      // Set form data with user's email as companyId
-      setFormData(updatedTestData);
-      console.log("User email set as companyId:", user.email);
-    } else {
-      // Still load test data but without user email
-      setFormData(testData);
-      console.log("No logged-in user found, companyId will be empty");
-      setMessage({ 
-        type: 'warning', 
-        text: 'You are not logged in. Please log in to associate this project with your account.' 
-      });
+      }));
+      console.log("User email set in form:", user.email);
     }
-  }, [user]); // Re-run this effect if user changes
+  }, [user]);
   
   const handleChange = (e) => {
     const { id, value } = e.target;
     setFormData({ ...formData, [id]: value });
-  };
-
-  const handleFileChange = (e) => {
-    if (e.target.files[0]) {
-      setFile(e.target.files[0]);
-    }
   };
 
   const formatPrize = (value) => {
@@ -110,10 +93,24 @@ const AddProdArena = () => {
       return;
     }
     
+    if (!acceptMarketFee) {
+      setMessage({ type: 'error', text: 'Please accept the market fee agreement to proceed.' });
+      setIsSubmitting(false);
+      return;
+    }
+    
+    if (!acceptPaymentCommitment) {
+      setMessage({ type: 'error', text: 'Please confirm your commitment to pay the winner.' });
+      setIsSubmitting(false);
+      return;
+    }
+    
     try {
       // Prepare data for submission - using Unix timestamp as requested
       const projectData = {
         ...formData,
+        // Combine trust statements with user description
+        description: `I trust I give 10% for hire next\nI trust I will give the full prize to the one who have best solution for me\n\n${formData.description}`,
         // Add _id field to satisfy MongoDB schema requirement
         _id: uuidv4(), // Generate a unique ID
         // Convert dollar string to number if needed by your API
@@ -127,17 +124,6 @@ const AddProdArena = () => {
       // Make the API call to your backend with the correct URL
       const response = await axios.post(`${API_BASE_URL}/api/projects`, projectData);
       console.log("Project created:", response.data);
-      
-      // Handle file upload if needed
-      if (file && response.data._id) {
-        const fileData = new FormData();
-        fileData.append('file', file);
-        
-        await axios.post(`${API_BASE_URL}/api/projects/${response.data._id}/upload`, fileData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
-        console.log("File uploaded successfully");
-      }
       
       // Show success message
       setMessage({ type: 'success', text: 'Project created successfully!' });
@@ -175,6 +161,7 @@ const AddProdArena = () => {
         <div className={`p-3 mb-4 rounded ${
           message.type === 'success' ? 'bg-green-100 text-green-700' : 
           message.type === 'warning' ? 'bg-yellow-100 text-yellow-700' : 
+          message.type === 'info' ? 'bg-blue-100 text-blue-700' :
           'bg-red-100 text-red-700'
         }`}>
           {message.text}
@@ -184,8 +171,7 @@ const AddProdArena = () => {
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         {/* Simple header */}
         <div className="bg-blue-500 p-4 text-white">
-          <h2 className="text-xl font-semibold">Create New Project (Test Mode)</h2>
-          <p className="text-sm text-blue-100">Form pre-filled with test data</p>
+          <h2 className="text-xl font-semibold">Create New Project</h2>
           {user && (
             <p className="text-sm text-blue-100">Logged in as: {user.email} ({user.role})</p>
           )}
@@ -195,7 +181,7 @@ const AddProdArena = () => {
           {/* Project Title */}
           <div>
             <label htmlFor="title" className="block text-sm font-medium mb-1">
-              Project Title
+              Project Title *
             </label>
             <input
               type="text"
@@ -203,26 +189,35 @@ const AddProdArena = () => {
               placeholder="Enter project title"
               value={formData.title}
               onChange={handleChange}
-              className="w-full p-2 border rounded"
+              className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+              required
             />
           </div>
           
           {/* Description */}
           <div>
             <label htmlFor="description" className="block text-sm font-medium mb-1">
-              Description
+              Description *
             </label>
+            
+            {/* Trust statements - non-editable */}
+            <div className="mb-2 p-3 bg-gray-50 border rounded text-sm text-gray-700">
+              <div className="font-medium text-blue-600 mb-1">Trust Statements:</div>
+              <div>• I trust I give 10% for hire next</div>
+              <div>• I trust I will give the full prize to the one who have best solution for me</div>
+            </div>
+            
+            {/* User's project description */}
             <textarea
               id="description"
               rows="4"
-              placeholder="Describe your project"
+              placeholder="Describe your project in detail..."
               value={formData.description}
               onChange={handleChange}
-              className="w-full p-2 border rounded"
+              className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+              required
             />
           </div>
-          
-          
           
           {/* Project Details - 2 columns on larger screens */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -236,13 +231,13 @@ const AddProdArena = () => {
                   id="category"
                   value={formData.category}
                   onChange={handleChange}
-                  className="w-full p-2 border rounded appearance-none"
+                  className="w-full p-2 border rounded appearance-none focus:border-blue-500 focus:outline-none"
                 >
                   {categories.map((cat) => (
                     <option key={cat} value={cat}>{cat}</option>
                   ))}
                 </select>
-                <ChevronDown className="absolute right-2 top-2 text-gray-400" size={16} />
+                <ChevronDown className="absolute right-2 top-2 text-gray-400 pointer-events-none" size={16} />
               </div>
             </div>
             
@@ -256,13 +251,13 @@ const AddProdArena = () => {
                   id="location"
                   value={formData.location}
                   onChange={handleChange}
-                  className="w-full p-2 border rounded appearance-none"
+                  className="w-full p-2 border rounded appearance-none focus:border-blue-500 focus:outline-none"
                 >
                   {locations.map((loc) => (
                     <option key={loc} value={loc}>{loc}</option>
                   ))}
                 </select>
-                <ChevronDown className="absolute right-2 top-2 text-gray-400" size={16} />
+                <ChevronDown className="absolute right-2 top-2 text-gray-400 pointer-events-none" size={16} />
               </div>
             </div>
             
@@ -276,13 +271,13 @@ const AddProdArena = () => {
                   id="difficulty"
                   value={formData.difficulty}
                   onChange={handleChange}
-                  className="w-full p-2 border rounded appearance-none"
+                  className="w-full p-2 border rounded appearance-none focus:border-blue-500 focus:outline-none"
                 >
                   {difficulties.map((diff) => (
                     <option key={diff} value={diff}>{diff}</option>
                   ))}
                 </select>
-                <ChevronDown className="absolute right-2 top-2 text-gray-400" size={16} />
+                <ChevronDown className="absolute right-2 top-2 text-gray-400 pointer-events-none" size={16} />
               </div>
             </div>
             
@@ -296,13 +291,13 @@ const AddProdArena = () => {
                   id="duration"
                   value={formData.duration}
                   onChange={handleChange}
-                  className="w-full p-2 border rounded appearance-none"
+                  className="w-full p-2 border rounded appearance-none focus:border-blue-500 focus:outline-none"
                 >
                   {durations.map((dur) => (
                     <option key={dur} value={dur}>{dur}</option>
                   ))}
                 </select>
-                <ChevronDown className="absolute right-2 top-2 text-gray-400" size={16} />
+                <ChevronDown className="absolute right-2 top-2 text-gray-400 pointer-events-none" size={16} />
               </div>
             </div>
           </div>
@@ -313,31 +308,79 @@ const AddProdArena = () => {
               Prize Amount
             </label>
             <div className="relative">
-              <DollarSign size={16} className="absolute left-2 top-2 text-gray-400" />
+              <DollarSign size={16} className="absolute left-2 top-2 text-gray-400 pointer-events-none" />
               <input
                 type="text"
                 id="prize"
-                placeholder="Enter amount"
+                placeholder="Enter amount (e.g., 5000)"
                 value={formData.prize}
                 onChange={handlePrizeChange}
-                className="w-full pl-8 p-2 border rounded"
+                className="w-full pl-8 p-2 border rounded focus:border-blue-500 focus:outline-none"
               />
             </div>
           </div>
+
+          {/* Market Fee Agreement Checkbox */}
+          <div className="border-t pt-4">
+            <div className="flex items-start space-x-3">
+              <input
+                type="checkbox"
+                id="acceptMarketFee"
+                checked={acceptMarketFee}
+                onChange={(e) => setAcceptMarketFee(e.target.checked)}
+                className="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                required
+              />
+              <label htmlFor="acceptMarketFee" className="text-sm text-gray-700">
+                <span className="font-medium">I accept that Hire Next will get 10% from the budget *</span>
+                <p className="text-xs text-gray-500 mt-1">
+                  By checking this box, you agree that Hire Next will deduct 10% from the total project budget as a platform fee.
+                </p>
+              </label>
+            </div>
+          </div>
+
+          {/* Payment Commitment Checkbox */}
+          <div className="border-t pt-4">
+            <div className="flex items-start space-x-3">
+              <input
+                type="checkbox"
+                id="acceptPaymentCommitment"
+                checked={acceptPaymentCommitment}
+                onChange={(e) => setAcceptPaymentCommitment(e.target.checked)}
+                className="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                required
+              />
+              <label htmlFor="acceptPaymentCommitment" className="text-sm text-gray-700">
+                <span className="font-medium">I will pay the person who has the best solution for my project *</span>
+                <p className="text-xs text-gray-500 mt-1">
+                  By checking this box, you commit to paying the full prize amount to the freelancer who provides the best solution that meets your project requirements.
+                </p>
+              </label>
+            </div>
+          </div>
+
           {/* Submit Button */}
           <div className="pt-4">
             <button
               type="submit"
-              disabled={isSubmitting || !formData.companyId}
-              className={`w-full p-2 rounded text-white ${
-                isSubmitting || !formData.companyId ? 'bg-blue-300' : 'bg-blue-500 hover:bg-blue-600'
+              disabled={isSubmitting || !formData.companyId || !acceptMarketFee || !acceptPaymentCommitment}
+              className={`w-full p-3 rounded text-white font-medium transition-colors ${
+                isSubmitting || !formData.companyId || !acceptMarketFee || !acceptPaymentCommitment
+                  ? 'bg-blue-300 cursor-not-allowed' 
+                  : 'bg-blue-500 hover:bg-blue-600'
               }`}
             >
-              {isSubmitting ? 'Creating...' : 'Create Project with Test Data'}
+              {isSubmitting ? 'Creating Project...' : 'Create Project'}
             </button>
             {!formData.companyId && (
               <p className="text-sm text-red-500 mt-2 text-center">
                 Please log in to create a project
+              </p>
+            )}
+            {formData.companyId && (!acceptMarketFee || !acceptPaymentCommitment) && (
+              <p className="text-sm text-red-500 mt-2 text-center">
+                Please accept both agreements to proceed
               </p>
             )}
           </div>
