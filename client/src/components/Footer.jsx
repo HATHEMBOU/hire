@@ -14,16 +14,21 @@ const Footer = () => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-white border-t border-gray-200 py-8">
-      <div className="container mx-auto px-6">
+    <footer className="bg-gray-50 border-t border-gray-200 py-8 px-4">
+      <div className="max-w-6xl mx-auto">
         {/* Logo and Subscription */}
-        <div className="flex flex-col md:flex-row justify-between items-center mb-8">
-          <div className="flex items-center gap-3 mb-4 md:mb-0">
-            <img src={assets.hiho} alt="Hire-Next Logo" className="h-8" />
-            <span className="text-xl font-bold text-[#0A2463]">Hire-Next</span>
+        <div className="flex flex-col sm:flex-row items-center justify-between mb-6">
+          <div className="flex items-center mb-4 sm:mb-0">
+            <img 
+              src={assets.logo} 
+              alt="Hire-Next Logo" 
+              className="w-8 h-8 mr-2"
+            />
+            <h3 className="text-xl font-semibold text-gray-800">
+              Hire-Next
+            </h3>
           </div>
-
-          <form onSubmit={handleSubscribe} className="flex w-full max-w-sm">
+          <form onSubmit={handleSubscribe} className="flex w-full sm:w-auto max-w-md">
             <input
               type="email"
               value={email}
@@ -34,7 +39,7 @@ const Footer = () => {
             />
             <button
               type="submit"
-              className="bg-[#0A2463] text-white px-4 py-2 rounded-r-md hover:bg-[#00B4D8] transition-colors"
+              className="px-4 py-2 bg-[#00B4D8] text-white rounded-r-md hover:bg-[#0096c7] transition-colors"
             >
               Join
             </button>
@@ -42,20 +47,26 @@ const Footer = () => {
         </div>
 
         {/* Contact Info */}
-        <div className="text-center mb-6">
-          <p className="text-sm text-gray-600">
-            <a href="mailto:contact@hire-next.com" className="hover:text-[#00B4D8]">
+        <div className="text-center text-gray-600 mb-4">
+          <span>
+            <a href="mailto:contact@hire-next.com" className="hover:text-[#00B4D8] transition-colors">
               contact@hire-next.com
-            </a>{' '}
+            </a>
+            {' '}
             |{' '}
-            <a href="tel:+15551234567" className="hover:text-[#00B4D8]">
+            <a href="mailto:admin@HireNext.com" className="hover:text-[#00B4D8] transition-colors">
+              admin@HireNext.com
+            </a>
+            {' '}
+            |{' '}
+            <a href="tel:+15551234567" className="hover:text-[#00B4D8] transition-colors">
               (555) 123-4567
             </a>
-          </p>
+          </span>
         </div>
 
         {/* Bottom Section */}
-        <div className="flex flex-col items-center text-sm text-gray-500">
+        <div className="text-center text-gray-500 text-sm border-t border-gray-200 pt-4">
           <p>© {currentYear} Hire-Next. All rights reserved.</p>
           <button
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
