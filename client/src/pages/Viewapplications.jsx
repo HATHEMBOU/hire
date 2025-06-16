@@ -40,6 +40,7 @@ const Viewapplication = () => {
             title: String(project.title || 'Untitled Project'),
             location: String(project.location || 'No location'),
             status: String(project.status || 'Unknown'),
+            description: String(project.description || 'No description provided'),
             submissionDate: project.date || new Date().toISOString()
           }))
         : [];
@@ -59,35 +60,79 @@ const Viewapplication = () => {
     }
   };
 
-  // Function to update project status
-  const updateProjectStatus = async (projectId, newStatus) => {
+  /**
+   * Updates an application's status.
+   * If an application is 'Accepted', it automatically rejects all other 'Pending'
+   * applications for the same project.
+   * @param {object} applicationToUpdate The full application object ('projectJoined' document).
+   * @param {string} newStatus The new status to set ('Pending', 'Accepted', 'Rejected').
+   */
+  const updateProjectStatus = async (applicationToUpdate, newStatus) => {
+    // A 'projectJoined' object needs a 'projectId' field to link back to the original project
+    // for this logic to work. We add a safeguard here.
+    if (newStatus === 'Accepted' && !applicationToUpdate.projectId) {
+      console.error('Critical Error: `projectId` is missing from the application object. Cannot perform auto-rejection logic.', applicationToUpdate);
+      setError('Cannot accept application: The original project ID is missing. This is a data inconsistency issue.');
+      return false;
+    }
+
+    setStatusUpdateLoading(true);
+    setOpenDropdownIndex(null); // Close dropdown immediately
+
     try {
-      setStatusUpdateLoading(true);
-      console.log(`Updating project ${projectId} status to ${newStatus}`);
+      const applicationId = applicationToUpdate._id;
       
-      const response = await axios.put(`${API_URL}/api/projectjoined/${projectId}/status`, {
+      // Step 1: Update the status of the selected application
+      console.log(`Updating application ${applicationId} status to ${newStatus}`);
+      await axios.put(`${API_URL}/api/projectjoined/${applicationId}/status`, {
         status: newStatus
       });
-      
-      console.log("Status update response:", response.data);
-      
-      // Update the project in the local state
-      const updatedProjects = joinedProjects.map(project => 
-        project._id === projectId ? { ...project, status: newStatus } : project
-      );
-      
-      setJoinedProjects(updatedProjects);
+
+      // Step 2: If 'Accepted', find and reject all other 'Pending' applications for the same project.
+      // NOTE: Ideally, this should be a single atomic transaction on the backend.
+      // This frontend implementation simulates it by making multiple API calls.
+      if (newStatus === 'Accepted') {
+        const mainProjectId = applicationToUpdate.projectId;
+        console.log(`Application for project ${mainProjectId} accepted. Rejecting other pending applications.`);
+
+        const otherPendingApplications = joinedProjects.filter(p =>
+          p.projectId === mainProjectId && // Belongs to the same project
+          p._id !== applicationId &&       // Is not the one we just accepted
+          p.status === 'Pending'           // Is currently pending
+        );
+
+        if (otherPendingApplications.length > 0) {
+          console.log(`Found ${otherPendingApplications.length} other pending applications to reject.`);
+          const rejectionPromises = otherPendingApplications.map(app =>
+            axios.put(`${API_URL}/api/projectjoined/${app._id}/status`, { status: 'Rejected' })
+          );
+          await Promise.all(rejectionPromises);
+          console.log('Successfully rejected other pending applications.');
+        }
+      }
+
+      // Step 3: Refresh the entire list from the server to ensure data consistency.
+      const freshData = await fetchAllJoinedProjects();
+
+      // Step 4: If the modal is open, update its content with the fresh data.
+      if (selectedSolution) {
+        const freshSolutionData = freshData.find(p => p._id === selectedSolution._id);
+        if (freshSolutionData) {
+          setSelectedSolution(freshSolutionData);
+        } else {
+          closeSolutionModal(); // Close modal if the item no longer exists
+        }
+      }
       
       return true;
     } catch (err) {
       console.error('❌ Failed to update project status:', err);
-      console.log("Error details:", err.response?.data || err.message);
       setError(`Failed to update status to ${newStatus}. Please try again.`);
+      // Even if it fails, try to refresh the data to get the latest state
+      await fetchAllJoinedProjects();
       return false;
     } finally {
       setStatusUpdateLoading(false);
-      // Close dropdown after action
-      setOpenDropdownIndex(null);
     }
   };
 
@@ -102,9 +147,9 @@ const Viewapplication = () => {
   };
 
   useEffect(() => {
-    // Fetch all projects when component mounts - not filtered by user
+    // Fetch all projects when component mounts
     fetchAllJoinedProjects();
-  }, []); // Removed user dependency to avoid re-fetching when user changes
+  }, []);
 
   // Close dropdown when clicking outside
   const handleOutsideClick = (e) => {
@@ -167,7 +212,8 @@ const Viewapplication = () => {
     .filter(project => {
       const matchesSearch = searchTerm === '' || 
         project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        project.location.toLowerCase().includes(searchTerm.toLowerCase());
+        project.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        project.description.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesStatus = selectedStatus === 'All' || project.status === selectedStatus;
       
@@ -219,9 +265,8 @@ const Viewapplication = () => {
             </div>
           </div>
           
-          {/* Refresh button */}
           <button 
-            onClick={fetchAllJoinedProjects}
+            onClick={() => fetchAllJoinedProjects()}
             className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors flex items-center"
             disabled={loading}
           >
@@ -232,7 +277,6 @@ const Viewapplication = () => {
           </button>
         </div>
 
-        {/* Error notification */}
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 m-4 rounded relative" role="alert">
             <span className="block sm:inline">{error}</span>
@@ -251,7 +295,17 @@ const Viewapplication = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full table-fixed">
+              <colgroup>
+                <col className="w-16" />
+                <col className="w-48" />
+                <col className="w-32 max-sm:hidden" />
+                <col className="w-80 max-lg:hidden" />
+                <col className="w-40 max-sm:hidden" />
+                <col className="w-24" />
+                <col className="w-24" />
+                <col className="w-32" />
+              </colgroup>
               <thead>
                 <tr className="bg-gray-50">
                   <th className="py-3 px-4 text-left font-medium text-gray-600 border-b">#</th>
@@ -278,6 +332,17 @@ const Viewapplication = () => {
                     </div>
                   </th>
                   <th 
+                    className="py-3 px-4 text-left font-medium text-gray-600 border-b cursor-pointer max-lg:hidden"
+                    onClick={() => handleSort('description')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Description
+                      {sortField === 'description' && (
+                        sortDirection === 'asc' ? <ChevronUp size={16} /> : <ChevronDown size={16} />
+                      )}
+                    </div>
+                  </th>
+                  <th 
                     className="py-3 px-4 text-left font-medium text-gray-600 border-b cursor-pointer max-sm:hidden"
                     onClick={() => handleSort('submissionDate')}
                   >
@@ -298,9 +363,26 @@ const Viewapplication = () => {
                   filteredProjects.map((project, index) => (
                     <tr key={project._id || index} className="hover:bg-gray-50 transition-colors">
                       <td className="py-3 px-4 border-b text-gray-500">{index + 1}</td>
-                      <td className="py-3 px-4 border-b font-medium text-gray-800">{project.title}</td>
-                      <td className="py-3 px-4 border-b text-gray-700 max-sm:hidden">{project.location}</td>
-                      <td className="py-3 px-4 border-b text-gray-700 max-sm:hidden">{formatDate(project.submissionDate)}</td>
+                      <td className="py-3 px-4 border-b font-medium text-gray-800">
+                        <div className="truncate" title={project.title}>
+                          {project.title}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 border-b text-gray-700 max-sm:hidden">
+                        <div className="truncate" title={project.location}>
+                          {project.location}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 border-b text-gray-700 max-lg:hidden">
+                        <div className="truncate" title={project.description}>
+                          {project.description || 'No description'}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 border-b text-gray-700 max-sm:hidden">
+                        <div className="truncate">
+                          {formatDate(project.submissionDate)}
+                        </div>
+                      </td>
                       <td className="py-3 px-4 border-b">
                         <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusBadgeClass(project.status)}`}>
                           {project.status}
@@ -318,7 +400,6 @@ const Viewapplication = () => {
                           {openDropdownIndex === index && (
                             <div className="z-10 absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg">
                               <div className="py-1">
-                                {/* View Solution Button */}
                                 <button 
                                   className="flex items-center w-full text-left px-4 py-2 text-blue-600 hover:bg-gray-100"
                                   onClick={() => {
@@ -330,7 +411,6 @@ const Viewapplication = () => {
                                   View Solution
                                 </button>
                                 
-                                {/* View Project Button */}
                                 <button 
                                   className="flex items-center w-full text-left px-4 py-2 text-gray-600 hover:bg-gray-100"
                                   onClick={() => {
@@ -342,37 +422,31 @@ const Viewapplication = () => {
                                   View Project
                                 </button>
                                 
-                                {/* Divider */}
                                 <div className="border-t border-gray-100 my-1"></div>
-                                
-                                {/* Status Update Options */}
                                 <div className="px-4 py-1 text-xs font-medium text-gray-500">Update Status:</div>
                                 
-                                {/* Pending Status */}
                                 <button 
                                   className={`flex items-center w-full text-left px-4 py-2 text-blue-600 hover:bg-gray-100 ${project.status === 'Pending' ? 'bg-blue-50' : ''}`}
                                   disabled={project.status === 'Pending' || statusUpdateLoading}
-                                  onClick={() => updateProjectStatus(project._id, 'Pending')}
+                                  onClick={() => updateProjectStatus(project, 'Pending')}
                                 >
                                   {project.status === 'Pending' && <Check size={16} className="mr-2" />}
                                   <span className={`mr-2 ${project.status !== 'Pending' ? 'ml-6' : ''}`}>Pending</span>
                                 </button>
                                 
-                                {/* Accepted Status */}
                                 <button 
                                   className={`flex items-center w-full text-left px-4 py-2 text-green-600 hover:bg-gray-100 ${project.status === 'Accepted' ? 'bg-green-50' : ''}`}
                                   disabled={project.status === 'Accepted' || statusUpdateLoading}
-                                  onClick={() => updateProjectStatus(project._id, 'Accepted')}
+                                  onClick={() => updateProjectStatus(project, 'Accepted')}
                                 >
                                   {project.status === 'Accepted' && <Check size={16} className="mr-2" />}
                                   <span className={`mr-2 ${project.status !== 'Accepted' ? 'ml-6' : ''}`}>Accepted</span>
                                 </button>
                                 
-                                {/* Rejected Status */}
                                 <button 
                                   className={`flex items-center w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100 ${project.status === 'Rejected' ? 'bg-red-50' : ''}`}
                                   disabled={project.status === 'Rejected' || statusUpdateLoading}
-                                  onClick={() => updateProjectStatus(project._id, 'Rejected')}
+                                  onClick={() => updateProjectStatus(project, 'Rejected')}
                                 >
                                   {project.status === 'Rejected' && <Check size={16} className="mr-2" />}
                                   <span className={`mr-2 ${project.status !== 'Rejected' ? 'ml-6' : ''}`}>Rejected</span>
@@ -399,7 +473,7 @@ const Viewapplication = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="7" className="py-8 text-center text-gray-500">
+                    <td colSpan="8" className="py-8 text-center text-gray-500">
                       No joined projects found matching your criteria
                     </td>
                   </tr>
@@ -416,18 +490,15 @@ const Viewapplication = () => {
         </div>
       </div>
 
-      {/* Status Update Toast Notification */}
       {statusUpdateLoading && (
-        <div className="fixed bottom-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-md shadow-md">
+        <div className="fixed bottom-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-md shadow-md animate-pulse">
           Updating status...
         </div>
       )}
 
-      {/* Solution Modal */}
       {selectedSolution && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            {/* Header */}
             <div className="bg-gradient-to-r from-blue-50 to-transparent border-b px-6 py-4">
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-bold text-gray-800">
@@ -454,7 +525,6 @@ const Viewapplication = () => {
               </div>
             </div>
             
-            {/* Content */}
             <div className="p-6">
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-gray-700 mb-2">Project Details</h3>
@@ -498,48 +568,15 @@ const Viewapplication = () => {
                 </div>
               )}
               
-              {selectedSolution.submissionFile && (
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-gray-700 mb-2">Submission File</h3>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <a 
-                      href={selectedSolution.submissionFile} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800 hover:underline flex items-center"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      View Uploaded File
-                    </a>
-                  </div>
-                </div>
-              )}
-              
-              {/* If there are any additional notes or feedback */}
-              {selectedSolution.feedback && (
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-gray-700 mb-2">Feedback</h3>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <p className="whitespace-pre-wrap">{selectedSolution.feedback}</p>
-                  </div>
-                </div>
-              )}
-              
-              {/* Status Update Section */}
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-gray-700 mb-2">Update Status</h3>
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <div className="flex flex-wrap gap-2">
                     <button 
-                      onClick={() => {
-                        updateProjectStatus(selectedSolution._id, 'Pending');
-                        setSelectedSolution({...selectedSolution, status: 'Pending'});
-                      }}
+                      onClick={() => updateProjectStatus(selectedSolution, 'Pending')}
                       className={`px-4 py-2 rounded-md font-medium ${
                         selectedSolution.status === 'Pending' 
-                          ? 'bg-blue-500 text-white' 
+                          ? 'bg-blue-500 text-white cursor-not-allowed' 
                           : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
                       }`}
                       disabled={selectedSolution.status === 'Pending' || statusUpdateLoading}
@@ -547,13 +584,10 @@ const Viewapplication = () => {
                       Pending
                     </button>
                     <button 
-                      onClick={() => {
-                        updateProjectStatus(selectedSolution._id, 'Accepted');
-                        setSelectedSolution({...selectedSolution, status: 'Accepted'});
-                      }}
+                      onClick={() => updateProjectStatus(selectedSolution, 'Accepted')}
                       className={`px-4 py-2 rounded-md font-medium ${
                         selectedSolution.status === 'Accepted' 
-                          ? 'bg-green-500 text-white' 
+                          ? 'bg-green-500 text-white cursor-not-allowed' 
                           : 'bg-green-100 text-green-800 hover:bg-green-200'
                       }`}
                       disabled={selectedSolution.status === 'Accepted' || statusUpdateLoading}
@@ -561,13 +595,10 @@ const Viewapplication = () => {
                       Accept
                     </button>
                     <button 
-                      onClick={() => {
-                        updateProjectStatus(selectedSolution._id, 'Rejected');
-                        setSelectedSolution({...selectedSolution, status: 'Rejected'});
-                      }}
+                      onClick={() => updateProjectStatus(selectedSolution, 'Rejected')}
                       className={`px-4 py-2 rounded-md font-medium ${
                         selectedSolution.status === 'Rejected' 
-                          ? 'bg-red-500 text-white' 
+                          ? 'bg-red-500 text-white cursor-not-allowed' 
                           : 'bg-red-100 text-red-800 hover:bg-red-200'
                       }`}
                       disabled={selectedSolution.status === 'Rejected' || statusUpdateLoading}
